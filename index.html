@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ocean Intro — dev harness</title>
+    <style>
+      /* Simulates the host (Webflow) page underneath the intro. */
+      body { margin: 0; font-family: system-ui, sans-serif; background: #101418; color: #dfe6e8; }
+      main { min-height: 200vh; padding: 12vh 8vw; }
+      h1 { font-weight: 500; letter-spacing: -0.02em; }
+    </style>
+  </head>
+  <body>
+    <!-- The only two things a Webflow site needs: this container + the script. -->
+    <div data-ocean-intro></div>
+
+    <main>
+      <h1>Host website content</h1>
+      <p>This is the page revealed after the intro completes. Add ?intro=force to the URL to replay the intro after completion.</p>
+    </main>
+
+    <script type="module">
+      import OceanIntro from '/src/index.js';
+      OceanIntro.init({
+        // Any config/defaults.js key can be overridden here per client.
+        once: false,
+        debug: true,
+      });
+    </script>
+  </body>
+</html>

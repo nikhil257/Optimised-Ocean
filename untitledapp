@@ -1,0 +1,367 @@
+// import {
+//   Clock,
+//   PerspectiveCamera,
+//   Scene,
+//   SRGBColorSpace,
+//   Vector3,
+//   WebGLRenderer,
+// } from 'three';
+// import gsap from 'gsap';
+
+// import { resolveQuality } from './Quality.js';
+// import { ScrollEngine } from './ScrollEngine.js';
+// import { OceanSurface } from '../world/ocean/OceanSurface.js';
+// import { SkyDome } from '../world/sky/SkyDome.js';
+// import { UnderwaterWorld } from '../world/underwater/UnderwaterWorld.js';
+// import { RushTunnel } from '../world/underwater/RushTunnel.js';
+// import { PostPipeline } from '../post/PostPipeline.js';
+// import { OceanPhase } from '../phases/OceanPhase.js';
+// import { DivePhase } from '../phases/DivePhase.js';
+// import { UIManager } from '../ui/UIManager.js';
+// import { degToRad } from '../utils/math.js';
+
+// export class App {
+//   constructor(config, dom) {
+//     this.config = config;
+//     this.dom = dom;
+//     this.listeners = { complete: [] };
+
+//     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+//     this.quality = resolveQuality(config.quality);
+
+//     if (config.debug) {
+//       console.info('[OceanIntro] quality tier:', this.quality.tier, this.quality);
+//     }
+
+//     this._setupRenderer();
+//     this._setupScene();
+//     this._setupInput();
+//     this._setupUI();
+
+//     this.clock = new Clock();
+//     this._running = true;
+//     this._raf = requestAnimationFrame(this._tick);
+
+//     this._reveal();
+//   }
+
+//   // -- setup ----------------------------------------------------------------
+
+//   _setupRenderer() {
+//     this.renderer = new WebGLRenderer({
+//       canvas: this.dom.canvas,
+//       antialias: false, // AA handled by supersampled DPR / post chain
+//       powerPreference: 'high-performance',
+//       stencil: false,
+//     });
+//     this.renderer.outputColorSpace = SRGBColorSpace;
+
+//     this.camera = new PerspectiveCamera(this.config.camera.fov, 1, 0.1, 5000);
+//     this.scene = new Scene();
+
+//     this._resizeObserver = new ResizeObserver(() => this._resize());
+//     this._resizeObserver.observe(this.dom.stage);
+//     this._resize();
+//   }
+
+//   _setupScene() {
+//     const { elevation, azimuth } = this.config.sun;
+//     const el = degToRad(elevation);
+//     const az = degToRad(azimuth);
+//     this.sunDir = new Vector3(
+//       Math.cos(el) * Math.sin(az),
+//       Math.sin(el),
+//       Math.cos(el) * Math.cos(az)
+//     ).normalize();
+
+//     this.sky = new SkyDome(this.config, this.sunDir);
+//     this.scene.add(this.sky.mesh);
+
+//     this.ocean = new OceanSurface(this.config, this.quality, this.sunDir);
+//     if (this.reducedMotion) this.ocean.setMotionScale(0.45);
+//     this.scene.add(this.ocean.mesh);
+
+//     this.post = new PostPipeline(this.renderer, this.scene, this.camera, this.config, this.quality);
+
+//     this.phase = new OceanPhase({
+//       camera: this.camera,
+//       config: this.config,
+//       reducedMotion: this.reducedMotion,
+//     });
+
+//     this.divePhase = new DivePhase({
+//       camera: this.camera,
+//       config: this.config,
+//       reducedMotion: this.reducedMotion,
+//       onCrossed: () => this._onDiveCrossed(),
+//       onArrived: () => this._onDiveArrived(),
+//     });
+
+//     // Exactly one phase owns the camera at any time.
+//     this.activePhase = this.phase;
+
+//     this.ui = new UIManager({
+//       shadow: this.dom.shadow,
+//       uiLayer: this.dom.ui,
+//       config: this.config,
+//       reducedMotion: this.reducedMotion,
+//       onCTA: () => this._startDive(),
+//     });
+
+//     // `post` didn't exist for the ResizeObserver's first firing — size it now.
+//     this._resize();
+//   }
+
+//   // -- dive (M3) -------------------------------------------------------------
+
+//   /** Built lazily during the UI phase's dwell time (all procedural, ~no wait). */
+//   _buildUnderwater() {
+//     if (this.underwater) return;
+//     this.underwater = new UnderwaterWorld(this.config, this.quality, this.sunDir);
+//     this.scene.add(this.underwater.group);
+//   }
+
+//   _startDive() {
+//     if (this.activePhase === this.divePhase) return;
+//     this._buildUnderwater(); // safety: CTA clicked before the idle build fired
+//     this.scroll.enabled = false; // TODO(M5): re-enable from the rest pose
+//     this.ui.hide(0.5);
+//     this.dom.hint.classList.remove('visible');
+//     this.activePhase = this.divePhase;
+//     this.divePhase.start();
+//   }
+
+//   _onDiveCrossed() {
+//     // Foam flash: reuse the reveal overlay in foam color for the impact frame.
+//     const flash = this.dom.flash;
+//     flash.style.background = this.config.palette.foam;
+//     flash.style.display = 'block';
+//     gsap.timeline({ onComplete: () => (flash.style.display = 'none') })
+//       .fromTo(flash, { opacity: 0 }, { opacity: 0.85, duration: 0.09, ease: 'power1.out' })
+//       .to(flash, { opacity: 0, duration: 0.6, ease: 'power2.out' });
+
+//     // World-state swap: water column, underwater grade, refraction shock.
+//     this.underwater?.setVisible(true);
+//     gsap.to(this.sky.submergeUniform, { value: 1, duration: 0.7, ease: 'power2.out' });
+//     this.post.gradeTo(this.config.post.gradeUnderwater, 1.4);
+//     if (!this.reducedMotion) this.post.pulseChroma();
+//   }
+
+//   _onDiveArrived() {
+//     // Underwater title card: same panel component, new content + new action.
+//     // A beat of stillness first — let the visitor register the new world.
+//     gsap.delayedCall(this.reducedMotion ? 0.2 : 0.8, () => {
+//       this.ui.setContent(this.config.content.underwater);
+//       this.ui.onCTA = () => this._startRush();
+//       this.ui.reveal();
+//     });
+//   }
+
+//   _startRush() {
+//     this.ui.hide(0.4);
+
+//     // Depth mood tracks the continuous descent: dimming begins partway into
+//     // the weave (you're already sinking) and completes through the drop.
+//     const d = this.config.dive;
+//     const uw = this.config.underwater;
+//     const rm = this.reducedMotion;
+//     const delay = rm ? 0 : d.currentDuration * 0.45;
+//     const dur = rm ? 1.6 : d.currentDuration * 0.55 + d.dropDuration + d.settleDuration * 0.4;
+//     const depth = { t: 0 };
+//     gsap.to(depth, {
+//       t: 1,
+//       duration: dur,
+//       delay,
+//       ease: 'power2.in',
+//       onUpdate: () => {
+//         this.sky.depthUniform.value = depth.t;
+//         this.underwater?.setDepth(depth.t, uw.fogDensity, uw.fogDensityDeep);
+//       },
+//     });
+//     gsap.delayedCall(delay, () => this.post.gradeTo(this.config.post.gradeDeep, dur));
+
+//     // The droplet vortex tunnel around the camera (skipped for reduced motion).
+//     // Camera-relative: always centered on the view, no alignment issues.
+//     if (!rm) {
+//       this.tunnel = new RushTunnel(this.config, this.quality);
+//       this.scene.add(this.tunnel.points);
+//       gsap.to(this.tunnel.revealUniform, { value: 1, duration: 0.6, ease: 'power2.out' });
+//       // Dissolve through the touchdown, then free the GPU memory.
+//       gsap.to(this.tunnel.revealUniform, {
+//         value: 0,
+//         duration: d.settleDuration + 0.8,
+//         delay: d.currentDuration + d.dropDuration * 0.45,
+//         ease: 'power2.inOut',
+//         onComplete: () => {
+//           this.scene.remove(this.tunnel.points);
+//           this.tunnel.dispose();
+//           this.tunnel = null;
+//         },
+//       });
+//     }
+
+//     this.divePhase.startRush(() => this._onRushArrived());
+//   }
+
+//   _onRushArrived() {
+//     // The silent clearing — the M5 scroll journey takes the camera from this
+//     // exact pose. Scroll stays disabled until that milestone lands.
+//     if (this.config.debug) console.info('[OceanIntro] arrived at the clearing — M5 starts here');
+//   }
+
+//   _setupInput() {
+//     // Cap scroll at the last milestone that's actually built, so there's
+//     // nothing to scroll into past it. Bump this as later milestones append
+//     // segments (dive, underwater, outro).
+//     const maxProgress = this.config.segments.ui[1];
+//     this.scroll = new ScrollEngine(this.dom.stage, { max: maxProgress });
+
+//     this._onPointerMove = (e) => {
+//       const nx = (e.clientX / window.innerWidth) * 2 - 1;
+//       const ny = (e.clientY / window.innerHeight) * 2 - 1;
+//       this.activePhase.onPointerMove(nx, ny);
+//       this.ui.setPointer(nx, ny);
+//     };
+//     window.addEventListener('pointermove', this._onPointerMove, { passive: true });
+//   }
+
+//   _setupUI() {
+//     this.dom.skip.addEventListener('click', () => this.complete('skip'));
+//   }
+
+//   // -- reveal choreography (post white-flash) --------------------------------
+
+//   _reveal() {
+//     const { flashHold, flashFade } = this.config.reveal;
+//     this.phase.enter();
+
+//     gsap.to(this.dom.flash, {
+//       opacity: 0,
+//       duration: this.reducedMotion ? 0.4 : flashFade,
+//       delay: this.reducedMotion ? 0 : flashHold,
+//       ease: 'power2.inOut',
+//       onComplete: () => {
+//         this.dom.flash.style.display = 'none';
+//       },
+//     });
+
+//     // Skip + scroll hint appear once the scene is readable.
+//     gsap.delayedCall(this.reducedMotion ? 0.5 : flashHold + flashFade * 0.7, () => {
+//       this.dom.skip.classList.add('visible');
+//       this.dom.hint.classList.add('visible');
+//     });
+//   }
+
+//   // -- loop ------------------------------------------------------------------
+
+//   _tick = () => {
+//     if (!this._running) return;
+//     this._raf = requestAnimationFrame(this._tick);
+
+//     const dt = Math.min(this.clock.getDelta(), 1 / 20); // clamp tab-switch spikes
+//     const elapsed = this.clock.elapsedTime;
+
+//     this.scroll.update(dt);
+//     const progress = this.scroll.progress;
+
+//     this.activePhase.update(dt, elapsed, progress);
+//     this.ui.update(dt);
+//     this.ocean.update(elapsed, this.camera.position);
+//     this.sky.update(this.camera.position);
+
+//     // Hide the hint once the user starts scrolling.
+//     if (progress > 0.02 && !this._hintHidden) {
+//       this._hintHidden = true;
+//       this.dom.hint.classList.remove('visible');
+//     }
+
+//     // Entering the UI segment reveals heading/description/CTA — and starts
+//     // building the underwater world in the visitor's dwell time.
+//     if (progress >= this.config.segments.ui[0] && !this.ui.revealed) {
+//       this.ui.reveal();
+//       this._buildUnderwater();
+//     }
+
+//     this.underwater?.update(elapsed, this.camera.position);
+//     // if (this.tunnel) {
+//     //   this.tunnel.update(elapsed);
+//     //   const s = this.divePhase.state;
+//     //   const dcfg = this.config.dive;
+//     //   // Mouth swings with the banking during the weave…
+//     //   const bx = -(s.roll / dcfg.bankAngle) * dcfg.tunnelBend;
+//     //   // …and dives DOWNWARD as the camera pitches into the drop — the slide's
+//     //   // exit chute. pitchT: 0 during the weave, 1 at full plummet pitch.
+//     //   const pitchT = Math.min(Math.max((-s.look - 43) / 100, 0), 1);
+//     //   const by = Math.sin(elapsed * 0.8) * dcfg.tunnelBend * 0.35
+//     //     - pitchT * dcfg.tunnelBend * 1.2;
+//     //   this.tunnel.setBend(bx, by);
+//     // }
+
+//     if (this.tunnel) {
+//       this.tunnel.update(elapsed);
+//       // The mouth swings with the banking: turning left bends the tube left.
+//       const s = this.divePhase.state;
+//       const dcfg = this.config.dive;
+//       const bx = -(s.roll / dcfg.bankAngle) * dcfg.tunnelBend;
+//       const by = Math.sin(elapsed * 0.8) * dcfg.tunnelBend * 0.35;
+//       this.tunnel.setBend(bx, by);
+//     }
+
+//     this.post.render(dt);
+//   };
+
+//   _resize() {
+//     const { clientWidth: w, clientHeight: h } = this.dom.stage;
+//     if (!w || !h) return;
+//     const dpr = Math.min(window.devicePixelRatio || 1, this.quality.pixelRatioCap);
+//     const scale = this.quality.renderScale;
+
+//     this.renderer.setPixelRatio(dpr * scale);
+//     this.renderer.setSize(w, h);
+//     // Composer inherits the renderer's pixel ratio internally — pass logical
+//     // size only. Guarded because ResizeObserver can fire before `post` exists.
+//     this.post?.setSize(w, h);
+
+//     this.camera.aspect = w / h;
+//     this.camera.updateProjectionMatrix();
+//   }
+
+//   // -- lifecycle -------------------------------------------------------------
+
+//   on(event, fn) {
+//     this.listeners[event]?.push(fn);
+//     return this;
+//   }
+
+//   complete(reason) {
+//     if (this._completed) return;
+//     this._completed = true;
+//     this.scroll.enabled = false;
+
+//     gsap.to(this.dom.stage, {
+//       opacity: 0,
+//       duration: this.reducedMotion ? 0.3 : 1.1,
+//       ease: 'power2.inOut',
+//       onComplete: () => {
+//         this.destroy();
+//         this.listeners.complete.forEach((fn) => fn({ reason }));
+//       },
+//     });
+//   }
+
+//   destroy() {
+//     if (this._destroyed) return;
+//     this._destroyed = true;
+//     this._running = false;
+//     cancelAnimationFrame(this._raf);
+//     this._resizeObserver.disconnect();
+//     window.removeEventListener('pointermove', this._onPointerMove);
+//     this.scroll.destroy();
+//     this.ocean.dispose();
+//     this.sky.dispose();
+//     this.underwater?.dispose();
+//     this.tunnel?.dispose();
+//     this.post.dispose();
+//     this.renderer.dispose();
+//   }
+// }
