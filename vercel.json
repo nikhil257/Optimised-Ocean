@@ -1,0 +1,4 @@
+{
+  "buildCommand": "npm run build && cp deploy/index.html dist/index.html && cp -r public/. dist/",
+  "outputDirectory": "dist"
+}

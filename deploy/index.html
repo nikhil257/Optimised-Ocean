@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ocean Intro — live demo</title>
+    <style>
+      /* Simulates the host (Webflow) page underneath the intro. */
+      body { margin: 0; font-family: system-ui, sans-serif; background: #101418; color: #dfe6e8; }
+      main { min-height: 200vh; padding: 12vh 8vw; }
+      h1 { font-weight: 500; letter-spacing: -0.02em; }
+    </style>
+  </head>
+  <body>
+    <!-- The only two things a Webflow site needs: this container + the script. -->
+    <div data-ocean-intro></div>
+
+    <main>
+      <h1>Host website content</h1>
+      <p>This is the page revealed after the intro completes. Add ?intro=force to the URL to replay the intro after completion.</p>
+    </main>
+
+    <!--
+      Production embed, exactly as documented in src/index.js: the built IIFE
+      bundle (window.OceanIntro) with data-auto-init, which calls
+      OceanIntro.init() with defaults once the script loads. This is the real
+      "one container div + one script tag" integration a host site would use.
+    -->
+    <script src="/ocean-intro.js" data-auto-init></script>
+  </body>
+</html>
