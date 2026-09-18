@@ -21,7 +21,7 @@ import { DivePhase } from '../phases/DivePhase.js';
 import { JourneyPhase } from '../phases/JourneyPhase.js';
 import { UIManager } from '../ui/UIManager.js';
 import { StoryBeats } from '../ui/StoryBeats.js';
-import { SheetTuner } from '../ui/Sheettuner.js';
+import { SheetTuner } from '../ui/SheetTuner.js';
 import { degToRad } from '../utils/math.js';
 import { RushSwirl } from '../world/underwater/RushSwirl.js';
 
