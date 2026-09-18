@@ -75,14 +75,13 @@ export class App {
     this.renderer = new WebGLRenderer({
       canvas: this.dom.canvas,
       antialias: false, // AA handled by supersampled DPR / post chain
-      // 'default' (not 'high-performance') — on hybrid-GPU laptops (Optimus/
-      // AMD switchable graphics, and Intel Macs with a discrete GPU),
-      // 'high-performance' explicitly forces the power-hungry GPU on for the
-      // whole session regardless of how demanding the current frame actually
-      // is. Letting the OS/driver decide keeps the same rendering output —
-      // same shaders, same resolution, same everything — while avoiding that
-      // forced power-up on machines where the integrated GPU is plenty.
-      powerPreference: 'default',
+      // 'high-performance': reverted from 'default' after it caused real lag
+      // on this machine — on hybrid-GPU laptops, 'default' can let the OS
+      // pick the weaker integrated GPU, and the ocean shader (the heaviest
+      // thing in the scene) can't keep up on it. 'high-performance' costs
+      // more power/heat, but this device needs the stronger GPU for the
+      // ocean to stay smooth, so smoothness wins here.
+      powerPreference: 'high-performance',
       stencil: false,
     });
     this.renderer.outputColorSpace = SRGBColorSpace;
@@ -212,26 +211,34 @@ export class App {
     }
     this.scene.add(this.underwater.group);
 
-    // Pre-build the dive's ambient/rush tunnel + swirl now, fully invisible,
-    // and force their shaders to compile immediately. This still runs during
-    // the same idle dwell window as the underwater world above — well before
-    // the dive — so by the time _onDiveArrived/_spawnTunnel actually reveal
-    // these, there's nothing left to compile. (Previously they were `new`'d
-    // for the first time mid-dive, and the browser's first-ever compile of
-    // that shader caused a one-frame hitch right when they appeared.)
+    // Pre-build the dive's ambient/rush tunnel + swirl (invisible) and force
+    // their shaders to compile ahead of time — deferred to the FOLLOWING
+    // frame (see _buildTunnelAndSwirl) rather than done here inline. Doing
+    // UnderwaterWorld construction + tunnel/swirl construction + a forced
+    // shader compile all synchronously in one frame caused a visible hitch
+    // right as the UI card reveals — i.e. while still at the surface,
+    // approaching the dive — well before either is actually needed (not
+    // until the dive completes). Spreading it across two frames keeps the
+    // UI-reveal frame light.
     if (!this.reducedMotion) {
-      const d = this.config.dive;
-      this.tunnel = new RushTunnel(this.config, this.quality);
-      this.tunnel.revealUniform.value = 0;
-      this.tunnel.enterUniform.value = d.tunnelAmbientEnter ?? 0.35;
-      this.scene.add(this.tunnel.points);
-
-      this.swirl = new RushSwirl(this.config, this.quality);
-      this.swirl.revealUniform.value = 0;
-      this.scene.add(this.swirl.group);
-
-      this.renderer.compile(this.scene, this.camera);
+      requestAnimationFrame(() => this._buildTunnelAndSwirl());
     }
+  }
+
+  /** See the comment in _buildUnderwater — split off to run one frame later. */
+  _buildTunnelAndSwirl() {
+    if (this.tunnel || this._destroyed) return;
+    const d = this.config.dive;
+    this.tunnel = new RushTunnel(this.config, this.quality);
+    this.tunnel.revealUniform.value = 0;
+    this.tunnel.enterUniform.value = d.tunnelAmbientEnter ?? 0.35;
+    this.scene.add(this.tunnel.points);
+
+    this.swirl = new RushSwirl(this.config, this.quality);
+    this.swirl.revealUniform.value = 0;
+    this.scene.add(this.swirl.group);
+
+    this.renderer.compile(this.scene, this.camera);
   }
 
   _startDive() {
@@ -258,6 +265,14 @@ export class App {
     gsap.to(this.sky.submergeUniform, { value: 1, duration: 0.7, ease: 'power2.out' });
     this.post.gradeTo(this.config.post.gradeUnderwater, 1.4);
     if (!this.reducedMotion) this.post.pulseChroma();
+
+    // LOCAL TEST TWEAK — not for production: snap the vortex to full opacity
+    // the instant the surface is crossed, instead of the (still-present, now
+    // redundant) fade-in later in _onDiveArrived. Everything else — the
+    // title card, its timing, the approach/rush ramps — is untouched.
+    if (!this.reducedMotion && this.tunnel) {
+      this.tunnel.revealUniform.value = 1;
+    }
   }
 
   _onDiveArrived() {
@@ -268,17 +283,9 @@ export class App {
       this.ui.onCTA = () => this._startApproach();
       this.ui.reveal();
 
-      // Reveal the vortex — already built (invisible, shader-warmed) back in
-      // _buildUnderwater — as an ambient backdrop BEHIND the title card, so
-      // it's present before the CTA. _spawnTunnel later ramps this same
-      // vortex up to full and wraps it around you.
-      if (!this.reducedMotion && this.tunnel) {
-        gsap.to(this.tunnel.revealUniform, {
-          value: this.config.dive.tunnelAmbientReveal ?? 0.4,
-          duration: 2.0,
-          ease: 'power1.out',
-        });
-      }
+      // Vortex is already at full opacity from the crossing (see
+      // _onDiveCrossed's local test tweak above), so there's nothing left
+      // to fade in here.
     });
   }
 

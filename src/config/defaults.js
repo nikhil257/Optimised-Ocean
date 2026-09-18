@@ -9,7 +9,7 @@ export const DEFAULTS = {
 
   // --- Scroll feel (12 cards)------------------------------------------------------
   scroll: {
-    wheelFactor: 0.00005, // full experience ≈ 7700px of scrolling
+    wheelFactor: 0.00003, // full experience ≈ 7700px of scrolling
     touchFactor: 0.00015,
     slowGain: 0.28, // input gain — a wheel tick advances ~1/4 as far
     slowSmoothing: 0.6, // easing rate — lower drifts longer and dreamier.
@@ -300,7 +300,7 @@ export const DEFAULTS = {
       // Existing one, unchanged — it just moves into the array.
       {
         sheetZ: 400,
-        sheetOffsetX: -10,
+        sheetOffsetX: -50,
         sheetHeight: 20,
         sheetScale: 1.2,
         sheetSize: 1,
