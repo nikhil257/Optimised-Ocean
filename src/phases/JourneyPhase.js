@@ -26,10 +26,25 @@ export class JourneyPhase {
     this._dir = new Vector3();
     this._right = new Vector3();
     this._target = new Vector3();
+
+    // Handoff blend: the rush hands off a specific gaze direction (wherever
+    // the camera actually ended up facing), but the curve's own tangent at
+    // t=0 is an authored direction that rarely matches it exactly. Blending
+    // FROM the real arrival direction INTO the curve's direction over
+    // journey.handoffBlend seconds turns what used to be an instant snap
+    // into a smooth settle — position was already continuous; this fixes
+    // the view direction the same way.
+    this._arrivalDir = null;
+    this._handoffElapsed = 0;
   }
 
-  /** Build the spline from config waypoints, anchored at the arrival pose. */
-  init(arrivalPos) {
+  /**
+   * Build the spline from config waypoints, anchored at the arrival pose.
+   * @param {Vector3} arrivalPos  camera position where the rush ended
+   * @param {Vector3} [arrivalDir]  camera's actual facing direction there —
+   *   blended out over journey.handoffBlend seconds (see constructor note).
+   */
+  init(arrivalPos, arrivalDir) {
     const uw = this.config.underwater;
     const points = this.config.journey.waypoints.map(
       (w) => new Vector3(
@@ -42,6 +57,8 @@ export class JourneyPhase {
     this.curve.updateArcLengths();
     this.t = 0;
     this.ready = true;
+    this._arrivalDir = arrivalDir && arrivalDir.lengthSq() > 0 ? arrivalDir.clone().normalize() : null;
+    this._handoffElapsed = 0;
   }
 
   onPointerMove(nx, ny) {
@@ -73,6 +90,22 @@ export class JourneyPhase {
     // ANGLE-based mouse look, hard-clamped: the gaze can deviate at most
     // maxLookYaw/maxLookPitch degrees from the path direction — never spins.
     this._dir.copy(this._look).sub(this._pos).normalize();
+
+    // Handoff blend (see constructor/init comments): ease FROM the rush's
+    // actual arrival direction INTO the curve's own tangent, instead of
+    // snapping to it on the very first frame.
+    if (this._arrivalDir) {
+      this._handoffElapsed += dt;
+      const blendDur = this.config.journey.handoffBlend ?? 0.7;
+      if (this._handoffElapsed >= blendDur) {
+        this._arrivalDir = null; // blend finished — stop paying for it
+      } else {
+        const k = clamp(this._handoffElapsed / blendDur, 0, 1);
+        const eased = k * k * (3 - 2 * k); // smoothstep
+        this._dir.lerpVectors(this._arrivalDir, this._dir, eased).normalize();
+      }
+    }
+
     const yaw = degToRad(this.config.camera.maxLookYaw) * -this.mouse.sx;
     const pitch = degToRad(this.config.camera.maxLookPitch) * -this.mouse.sy;
     this._right.crossVectors(this._dir, UP).normalize();

@@ -35,11 +35,23 @@ export class ScrollEngine {
     this._bind();
   }
 
+  /**
+   * Forward-only: apply a target delta, but never let it move target
+   * backward. The experience is a one-way narrative — once scrolled
+   * forward, input that would reverse it is simply absorbed (not clamped
+   * to a wall you can push against — it silently does nothing, like a
+   * ratchet).
+   */
+  _advance(delta) {
+    const next = clamp(this.target + delta, 0, this.max);
+    if (next > this.target) this.target = next;
+  }
+
   _bind() {
     this._onWheel = (e) => {
       if (!this.enabled) return;
       e.preventDefault();
-      this.target = clamp(this.target + e.deltaY * this.wheelFactor * this._gain(), 0, this.max);
+      this._advance(e.deltaY * this.wheelFactor * this._gain());
     };
     this._onTouchStart = (e) => {
       this._touchY = e.touches[0].clientY;
@@ -48,7 +60,7 @@ export class ScrollEngine {
       if (!this.enabled) return;
       e.preventDefault();
       const y = e.touches[0].clientY;
-      this.target = clamp(this.target + (this._touchY - y) * this.touchFactor * this._gain(), 0, this.max);
+      this._advance((this._touchY - y) * this.touchFactor * this._gain());
       this._touchY = y;
     };
     this._onKey = (e) => {
@@ -56,7 +68,7 @@ export class ScrollEngine {
       const step = { ArrowDown: 0.05, PageDown: 0.12, ' ': 0.08, ArrowUp: -0.05, PageUp: -0.12 }[e.key];
       if (step !== undefined) {
         e.preventDefault();
-        this.target = clamp(this.target + step, 0, this.max);
+        this._advance(step);
       }
     };
 
