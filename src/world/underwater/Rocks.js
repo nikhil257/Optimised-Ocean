@@ -18,7 +18,7 @@ import { linearColor } from '../../utils/math.js';
 // yaw + non-uniform scale, exactly as before — the two models plus the scale
 // variation give the visual variety ("multiply it using scale so it looks
 // different"). The scatter layout, camera, and seeded RNG order are UNCHANGED,
-// so kelp/fish/turtles/particles downstream keep their identical placement.
+// so kelp/fish/particles downstream keep their identical placement.
 //
 // Lighting: the scene has no real lights (everything underwater is shaded by a
 // faked sun in custom shaders), so we do NOT use the GLB's PBR material. We

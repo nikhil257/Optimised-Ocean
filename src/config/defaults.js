@@ -328,7 +328,6 @@ export const DEFAULTS = {
       { name: "fishB", url: "/fish.glb", weight: 40, size: 2.2 },
     ],
 
-    fishSheetShare: 0,
     fishClusters: 22, // (3) was 10
     fishGroupSizes: [17, 15, 22, 19, 18, 8, 16, 22, 20, 20], // (4) varied
     fishFromDz: 2, // (2) right where the rush drops you

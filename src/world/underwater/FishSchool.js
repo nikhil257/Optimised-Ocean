@@ -351,7 +351,6 @@ export class FishSchool {
     // only covers about 40m of that width, so a uniform scatter puts most
     // schools permanently off-screen. Sampling the waypoints keeps every
     // school somewhere the camera actually goes.
-    const sheetShare0 = Math.min(Math.max(uw.fishSheetShare ?? 0.45, 0), 1);
     const wps = config.journey?.waypoints ?? [];
     const landZ = uw.sheetAnchorZ ?? -126;
     const atDz = (dz) => {
@@ -424,27 +423,8 @@ export class FishSchool {
     // fixed fishCount, any shortfall silently starved the LAST schools in the
     // list — which are the ones furthest along the journey, so the back half
     // of the swim came out empty with no obvious cause.
-    const needed = Math.ceil(clusterOrder.length / Math.max(1 - sheetShare0, 1e-6));
+    const needed = clusterOrder.length;
     if (needed > total) total = needed;
-
-     const zNear = -uw.restZ - 20;
-    const zFar = -uw.restZ - (uw.fishSpread ?? 800);
-
-    const sheets = [];
-    const sheetCount = uw.fishSheets ?? 2;
-    for (let s = 0; s < sheetCount; s++) {
-      const t = 0.45 + ((s + rng()) / sheetCount) * 0.5;
-      sheets.push({
-        pos: [
-          (rng() - 0.5) * uw.areaWidth * 0.5,
-          -uw.floorDepth + 26 + rng() * 18,
-          zNear + (zFar - zNear) * t,
-        ],
-        dir: rng() < 0.5 ? -1 : 1,
-        spin: 0.05 + rng() * 0.02,
-        phase: rng(),
-      });
-    }
 
     // One bucket of instance data per species.
     const buckets = species.map(() => ({
@@ -463,75 +443,42 @@ export class FishSchool {
     const rowGap = fm.rowGap ?? 1.8;      // wedge only
     const colGap = fm.colGap ?? 1.5;      // wedge only
     const formJitter = fm.jitter ?? 0.35;
-    // Clamped: this is a FRACTION. A value above 1 sends every fish down the
-    // scattered sheet branch and no formation is ever built.
-    // Clamped: this is a FRACTION. A value above 1 sends every fish down the
-    // scattered sheet branch and no formation is ever built.
-    const sheetShare = Math.min(Math.max(uw.fishSheetShare ?? 0.45, 0), 1);
-    const sheetFish = Math.round(total * sheetShare);
     let formIndex = 0;
 
     for (let i = 0; i < total; i++) {
-      const inSheet = i < sheetFish && sheets.length > 0;
-
-      // Species: for a school it comes from the SCHOOL, so a group is never
-      // half one model and half the other. Loose sheet fish still pick their
-      // own, since they aren't a group.
-      let si;
-      if (inSheet) {
-        let pick = rng() * weightSum;
-        si = 0;
-        for (; si < species.length - 1; si++) {
-          pick -= species[si].weight ?? 1;
-          if (pick <= 0) break;
-        }
-      } else {
-        si = clusters[clusterOrder[formIndex % clusterOrder.length]].species;
-      }
+      // Species comes from the SCHOOL, so a group is never half one model
+      // and half the other.
+      const si = clusters[clusterOrder[formIndex % clusterOrder.length]].species;
       const bk = buckets[si];
 
-      if (inSheet) {
-        const w = sheets[Math.floor(rng() * sheets.length)];
-        const arc = uw.fishSheetArc ?? 0.16;
-        bk.centers.push(
-          w.pos[0] + (rng() - 0.5) * 6,
-          w.pos[1] + (rng() - 0.5) * 30,
-          w.pos[2] + (rng() - 0.5) * 6,
+      const sc = clusters[clusterOrder[formIndex % clusterOrder.length]];
+      formIndex++;
+      const m = sc.n++;
+      if (shape === 'wedge') {
+        // Triangular wedge. Row r holds r+1 fish, so slot m sits in the row
+        // where the triangular numbers cross it — that inverse is the sqrt.
+        const r = Math.floor((Math.sqrt(8 * m + 1) - 1) / 2);
+        const col = m - (r * (r + 1)) / 2;
+        bk.form.push(
+          -r * rowGap + (rng() - 0.5) * formJitter,
+          (rng() - 0.5) * formJitter * 2,
+          (col - r * 0.5) * colGap + (rng() - 0.5) * formJitter,
         );
-        bk.orbits.push(25 + rng() * 55, 0.4 + rng() * 0.9);
-        bk.motions.push(w.dir * w.spin, w.phase + rng() * arc);
-        bk.form.push(0, 0, 0);   // sheet fish keep their own scattered places
-        bk.scales.push(0.30 + rng() * 0.25);
       } else {
-        const sc = clusters[clusterOrder[formIndex % clusterOrder.length]];
-        formIndex++;
-        const m = sc.n++;
-        if (shape === 'wedge') {
-          // Triangular wedge. Row r holds r+1 fish, so slot m sits in the row
-          // where the triangular numbers cross it — that inverse is the sqrt.
-          const r = Math.floor((Math.sqrt(8 * m + 1) - 1) / 2);
-          const col = m - (r * (r + 1)) / 2;
-          bk.form.push(
-            -r * rowGap + (rng() - 0.5) * formJitter,
-            (rng() - 0.5) * formJitter * 2,
-            (col - r * 0.5) * colGap + (rng() - 0.5) * formJitter,
-          );
-        } else {
-          // Cloud. A signed pow() keeps the density higher in the middle and
-          // thins it at the edges, so the group has a core instead of ending
-          // on a hard box — that soft boundary is most of what makes a blob
-          // of fish read as one shoal rather than as scattered individuals.
-          const sp = (v, ext) => {
-            const t = v * 2 - 1;
-            return Math.sign(t) * Math.pow(Math.abs(t), 1 / cloudBias) * ext * 0.5;
-          };
-          bk.form.push(sp(rng(), cloudD), sp(rng(), cloudH), sp(rng(), cloudW));
-        }
-        bk.centers.push(sc.pos[0], sc.pos[1], sc.pos[2]);
-        bk.orbits.push(sc.orbit[0], sc.orbit[1]);
-        bk.motions.push(sc.motion[0], sc.motion[1]);
-        bk.scales.push(0.35 + rng() * 0.45);
+        // Cloud. A signed pow() keeps the density higher in the middle and
+        // thins it at the edges, so the group has a core instead of ending
+        // on a hard box — that soft boundary is most of what makes a blob
+        // of fish read as one shoal rather than as scattered individuals.
+        const sp = (v, ext) => {
+          const t = v * 2 - 1;
+          return Math.sign(t) * Math.pow(Math.abs(t), 1 / cloudBias) * ext * 0.5;
+        };
+        bk.form.push(sp(rng(), cloudD), sp(rng(), cloudH), sp(rng(), cloudW));
       }
+      bk.centers.push(sc.pos[0], sc.pos[1], sc.pos[2]);
+      bk.orbits.push(sc.orbit[0], sc.orbit[1]);
+      bk.motions.push(sc.motion[0], sc.motion[1]);
+      bk.scales.push(0.35 + rng() * 0.45);
       const family = rng() < 0.6 ? 0.0 : 0.09;
       bk.hue.push(family + (rng() - 0.5) * 0.05);
       bk.light.push((rng() - 0.5) * 0.12);

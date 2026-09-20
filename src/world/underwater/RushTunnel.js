@@ -127,6 +127,16 @@ void main() {
 
   gl_PointSize = uSize * (0.4 + aSeed * 1.1) * (200.0 / max(-mv.z, 1.0));
   gl_PointSize *= mix(0.4, 1.0, uReveal);
+  // Explicit cross-platform cap: WebGL clamps point size to whatever the
+  // GPU/driver reports as its max (ALIASED_POINT_SIZE_RANGE), and that max
+  // is known to differ a lot between platforms — macOS's native GPU backend
+  // is typically generous, Windows' ANGLE (WebGL -> Direct3D) layer often
+  // reports a much smaller one. Relying on the driver's own silent clamp is
+  // what made this look fine on Mac and blocky/pixelated on Windows: forced
+  // down to only a few pixels, the soft circular falloff below has too few
+  // pixels to render into. Capping here instead means every platform hits
+  // the SAME limit, so the look is consistent everywhere.
+  gl_PointSize = min(gl_PointSize, 150.0);
 
   float zNorm = (z + uLength * 0.5) / uLength;
   float endFade = smoothstep(0.0, 0.28, zNorm) * smoothstep(1.0, 0.9, zNorm);
