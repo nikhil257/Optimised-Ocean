@@ -19,10 +19,15 @@ const TIERS = {
     grain: true,
   },
   low: {
-    pixelRatioCap: 1,
-    renderScale: 0.7,     // fillrate is the mobile bottleneck — scale down, upscale in post
+    // Resolution deliberately matches `high` — no downscale-then-upscale
+    // blur. The tradeoff for weak-GPU devices is population/geometry counts
+    // below (oceanSegments/underwaterScale), not sharpness: this keeps the
+    // *output* pixel-perfect while there's simply less on screen to draw.
+    pixelRatioCap: 2,
+    renderScale: 1.0,
     oceanSegments: 190,
     underwaterScale: 0.4,
+    sharks: false, // FishSchool reads this — see FishSchool.js
     bloom: false,
     grain: false,
   },

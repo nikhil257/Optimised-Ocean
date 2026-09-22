@@ -561,8 +561,10 @@ export class FishSchool {
       );
     });
 
-    // ---- Sharks (still SVG) ----------------------------------------------
-    const sharkCount = uw.sharkCount ?? 0;
+    // ---- Sharks ------------------------------------------------------------
+    // Disabled outright on low tier (quality.sharks === false) — not scaled
+    // down like the other populations, removed entirely.
+    const sharkCount = quality.sharks === false ? 0 : (uw.sharkCount ?? 0);
 
     if (sharkCount > 0) {
       // Instance data first, synchronously — same reasoning as the fish: the
