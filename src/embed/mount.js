@@ -73,6 +73,76 @@ canvas {
 @media (prefers-reduced-motion: reduce) {
   .skip, .hint { transition: none; }
 }
+
+/* Startup loader — covers everything while the scene/assets spin up, so
+   nothing half-built is ever visible. Sits above .flash (last in the
+   stage), fixed 2.5s fill + fade, driven entirely from App.js. */
+.loader {
+  position: absolute;
+  inset: 0;
+  /* BeachPhase's own layer (video + 3D logo, the first thing the ocean
+     scene actually shows) sets z-index:2 on its root div in the same
+     stage container. Any element with an explicit positive z-index paints
+     above z-index:auto siblings regardless of DOM order — so without
+     this, the loader (auto) loses to that layer (2) even though the
+     loader is appended last. This just needs to beat it. */
+  z-index: 10;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  pointer-events: auto;
+}
+.loader-heading {
+  margin: 0;
+  color: #111417;
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.loader-sub {
+  margin: 0 0 10px;
+  color: #8a9096;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.loader-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.loader-track {
+  width: min(320px, 60vw);
+  height: 6px;
+  border-radius: 999px;
+  background: #ececec;
+  overflow: hidden;
+}
+.loader-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: #111417;
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
+  /* Duration is set inline from App.js (reduced-motion needs a different
+     one); transform-based so the browser can animate it on the compositor
+     thread — immune to main-thread stalls from scene setup / shader
+     compiles happening at the same time, which is what made the JS-ticked
+     version flash/stutter instead of gliding smoothly. */
+  transition: transform linear;
+}
+.loader-percent {
+  min-width: 3.2em;
+  color: #111417;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
 `;
 
 export function mount(config) {
@@ -122,7 +192,40 @@ export function mount(config) {
   skip.setAttribute('aria-label', 'Skip the intro animation');
   ui.appendChild(skip);
 
-  return { host, shadow, stage, canvas, ui, flash, hint, skip };
+  // Loader — appended LAST so it paints on top of canvas/ui/flash. Plain
+  // DOM, no WebGL dependency, so it's already visible before the renderer
+  // or any asset has done anything.
+  const loader = document.createElement('div');
+  loader.className = 'loader';
+  loader.setAttribute('role', 'status');
+  loader.setAttribute('aria-live', 'polite');
+
+  const loaderHeading = document.createElement('p');
+  loaderHeading.className = 'loader-heading';
+  loaderHeading.textContent = 'Loading your experience';
+  loader.appendChild(loaderHeading);
+
+  const loaderSub = document.createElement('p');
+  loaderSub.className = 'loader-sub';
+  loaderSub.textContent = 'Just a moment...';
+  loader.appendChild(loaderSub);
+
+  const loaderBarRow = document.createElement('div');
+  loaderBarRow.className = 'loader-bar-row';
+  const loaderTrack = document.createElement('div');
+  loaderTrack.className = 'loader-track';
+  const loaderFill = document.createElement('div');
+  loaderFill.className = 'loader-fill';
+  loaderTrack.appendChild(loaderFill);
+  const loaderPercent = document.createElement('span');
+  loaderPercent.className = 'loader-percent';
+  loaderPercent.textContent = '0%';
+  loaderBarRow.append(loaderTrack, loaderPercent);
+  loader.appendChild(loaderBarRow);
+
+  stage.appendChild(loader);
+
+  return { host, shadow, stage, canvas, ui, flash, hint, skip, loader, loaderFill, loaderPercent };
 }
 
 export function unmount(host) {

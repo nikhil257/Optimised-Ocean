@@ -66,7 +66,7 @@ export class App {
     };
     document.addEventListener('visibilitychange', this._onVisibilityChange);
 
-    this._reveal();
+    this._showLoader();
   }
 
   // -- setup ----------------------------------------------------------------
@@ -486,6 +486,69 @@ export class App {
 
   _setupUI() {
     this.dom.skip.addEventListener('click', () => this.complete('skip'));
+  }
+
+  // -- startup loader ---------------------------------------------------------
+
+  /**
+   * Covers the whole stage from the very first frame — plain DOM, so it's
+   * already on screen before the renderer/scene/assets have done anything.
+   * Holds for a fixed 4.5s (filling the progress bar) while the scene sets
+   * up and its first shaders compile behind it, fades out, THEN hands off
+   * to the existing white-flash reveal. Scroll is locked the entire time.
+   *
+   * The bar itself is a CSS `transform` transition, not a JS/GSAP-ticked
+   * style update — that's deliberate. A JS-driven update runs on the same
+   * requestAnimationFrame queue as the WebGL scene construction and first
+   * shader compiles happening underneath; when those spike the main thread,
+   * a JS-ticked bar stalls and jumps instead of gliding. A CSS transform
+   * transition is animated by the browser's compositor on its own thread,
+   * so it stays smooth regardless of how heavy the background work is.
+   * The percentage TEXT still needs JS (CSS can't format a number), but
+   * it's computed from wall-clock elapsed time each frame it manages to
+   * run — so even if a frame is skipped under load, it shows the correct
+   * number for that moment rather than a stale one that has to catch up.
+   */
+  _showLoader() {
+    this.scroll.enabled = false;
+
+    const durSec = this.reducedMotion ? 0.8 : 4.5;
+    const fill = this.dom.loaderFill;
+    const percentEl = this.dom.loaderPercent;
+
+    fill.style.transitionDuration = `${durSec}s`;
+    // Force a style flush before setting the target value — otherwise the
+    // browser can coalesce the initial (scaleX(0)) and target (scaleX(1))
+    // states into one paint with no transition ever registered.
+    void fill.offsetHeight;
+    fill.style.transform = 'scaleX(1)';
+
+    const start = performance.now();
+    const tick = () => {
+      const elapsed = (performance.now() - start) / 1000;
+      const pct = Math.min(100, Math.round((elapsed / durSec) * 100));
+      percentEl.textContent = `${pct}%`;
+      if (elapsed < durSec && !this._destroyed) {
+        requestAnimationFrame(tick);
+      } else {
+        percentEl.textContent = '100%';
+        this._hideLoader();
+      }
+    };
+    requestAnimationFrame(tick);
+  }
+
+  _hideLoader() {
+    gsap.to(this.dom.loader, {
+      opacity: 0,
+      duration: 0.6,
+      ease: 'power2.inOut',
+      onComplete: () => {
+        this.dom.loader.style.display = 'none';
+        this.scroll.enabled = true;
+        this._reveal();
+      },
+    });
   }
 
   // -- reveal choreography (post white-flash) --------------------------------
