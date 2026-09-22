@@ -7,6 +7,7 @@ const TIERS = {
     renderScale: 1.0,     // scene render resolution multiplier (post upscales)
     oceanSegments: 420,
     underwaterScale: 1.0,
+    kelpBoost: 1, // extra multiplier on top of underwaterScale — see Kelp.js
     bloom: true,
     grain: true,
   },
@@ -15,6 +16,7 @@ const TIERS = {
     renderScale: 0.85,
     oceanSegments: 300,
     underwaterScale: 0.65,
+    kelpBoost: 1,
     bloom: true,
     grain: true,
   },
@@ -27,6 +29,11 @@ const TIERS = {
     renderScale: 1.0,
     oceanSegments: 190,
     underwaterScale: 0.4,
+    // Kelp is cheap (instanced geometry, simple per-vertex sway — not the
+    // fill-rate-heavy kind of cost), so it gets a bit more than the general
+    // underwaterScale cut alone would give it: 0.4 * 1.6 = 0.64 of full
+    // count, denser than fish/rocks/particles without touching their cost.
+    kelpBoost: 1.6,
     sharks: false, // FishSchool reads this — see FishSchool.js
     bloom: false,
     grain: false,

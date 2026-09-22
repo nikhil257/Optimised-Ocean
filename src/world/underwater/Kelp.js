@@ -478,7 +478,7 @@ export class Kelp {
     const uw = config.underwater;
     this._config = config;
     this._sunDir = sunDir;
-    const count = Math.round(uw.kelpCount * quality.underwaterScale);
+    const count = Math.round(uw.kelpCount * quality.underwaterScale * (quality.kelpBoost ?? 1));
     const models = uw.kelpModels ?? DEFAULT_MODELS;
     this._models = models;
 
