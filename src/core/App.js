@@ -303,16 +303,6 @@ export class App {
   _spawnTunnel() {
     if (this.reducedMotion) return;
 
-    // Depth-of-field ramps in with the tunnel — cinematic soft-focus on the
-    // near/far particles while the mid-distance ones stay sharp, matching
-    // the reference's bokeh-vortex look. Scoped to just this sequence (see
-    // disableDoF in _startRush) rather than left on for the rest of the
-    // experience — it's a real extra blur pass, not free. Also gated to
-    // `high` tier only: on a GPU that's already behind, an extra full-screen
-    // blur pass reads as "everything is blurry/laggy" rather than cinematic,
-    // so medium/low skip it entirely instead of getting a degraded version.
-    if (this.quality.tier === 'high') this.post.enableDoF();
-
     // The vortex already exists (built + shader-warmed back in
     // _buildUnderwater); ramp it up to full for the dive. (Safety-create it
     // here too, only in case that earlier build was somehow skipped.)
@@ -373,11 +363,6 @@ export class App {
     gsap.delayedCall(Math.max(0, dissolveDelay - 0.4), () => {
       this.underwater?.setReefVisible(true);
     });
-
-    // Depth-of-field returns to normal (fully sharp) over the same window
-    // the tunnel dissolves away, so focus resolves exactly as the reef
-    // takes over.
-    if (!rm) gsap.delayedCall(dissolveDelay, () => this.post.disableDoF(dissolveDur));
 
     // Tunnel is created HERE — exactly when the approach glide finishes —
     // so it doesn't exist, and can't be seen, before that point.a

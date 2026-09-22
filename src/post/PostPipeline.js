@@ -104,7 +104,6 @@ import {
   BlendFunction,
   BloomEffect,
   ChromaticAberrationEffect,
-  DepthOfFieldEffect,
   EffectComposer,
   EffectPass,
   NoiseEffect,
@@ -171,64 +170,13 @@ export class PostPipeline {
       effects.push(noise);
     }
 
-    // Depth-of-field: NOT part of the always-on chain — it's a real extra
-    // blur pass, so it only exists in the composer while the rush tunnel is
-    // actually on screen (see enableDoF/disableDoF, driven by App.js around
-    // _startApproach/_startRush). Constructed once up front so activating
-    // it is just rebuilding the merged EffectPass, not a fresh compile.
-    this.dof = new DepthOfFieldEffect(camera, {
-      focusDistance: post.dof?.focusDistance ?? 14,
-      focusRange: post.dof?.focusRange ?? 10,
-      bokehScale: 0,
-    });
-    this._dofActive = false;
-
     // Screen-space dissolve transition (tunnel → ocean). Last in the chain so it
     // operates on the fully-composed image. Idle unless a dissolve is running.
     this.dissolve = new DissolveTransition(post.transition || {});
     effects.push(this.dissolve);
 
-    this._effects = effects; // base chain, without dof — dof splices in before dissolve
     this.mainPass = new EffectPass(camera, ...effects);
     this.composer.addPass(this.mainPass);
-  }
-
-  /** Splice dof in/out of the merged EffectPass (right before the dissolve,
-   *  which should always see the final, already-blurred image). */
-  _rebuildMainPass(withDoF) {
-    this.composer.removePass(this.mainPass);
-    this.mainPass.dispose();
-    const list = withDoF
-      ? [...this._effects.slice(0, -1), this.dof, this._effects[this._effects.length - 1]]
-      : this._effects;
-    this.mainPass = new EffectPass(this.camera, ...list);
-    this.composer.addPass(this.mainPass);
-    this._dofActive = withDoF;
-  }
-
-  /** Ramp depth-of-field in — scoped to the tunnel-rush sequence only, not
-   *  left running for the rest of the experience (it's a real extra cost). */
-  enableDoF({ bokehScale = 1.2, focusDistance, focusRange } = {}, duration = 1.2) {
-    if (!this._dofActive) {
-      this.dof.bokehScale = 0;
-      this._rebuildMainPass(true);
-    }
-    if (focusDistance != null) this.dof.focusDistance = focusDistance;
-    if (focusRange != null) this.dof.focusRange = focusRange;
-    gsap.to(this.dof, { bokehScale, duration, ease: 'power2.out', overwrite: true });
-  }
-
-  /** Ramp depth-of-field back out, then actually remove it from the merged
-   *  pass once invisible — so it stops costing anything again. */
-  disableDoF(duration = 0.8) {
-    if (!this._dofActive) return;
-    gsap.to(this.dof, {
-      bokehScale: 0,
-      duration,
-      ease: 'power2.in',
-      overwrite: true,
-      onComplete: () => this._rebuildMainPass(false),
-    });
   }
 
   /** Freeze the current (post-composed) frame so the dissolve can reveal what's
@@ -280,10 +228,6 @@ export class PostPipeline {
 
   dispose() {
     this._fbTex?.dispose();
-    // dof is only ever attached to the composer while active — dispose it
-    // explicitly too, in case the app is torn down while it's inactive
-    // (composer.dispose() only reaches passes it currently holds).
-    if (!this._dofActive) this.dof.dispose();
     this.composer.dispose();
   }
 }
