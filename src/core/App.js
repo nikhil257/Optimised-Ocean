@@ -8,7 +8,7 @@ import {
 } from 'three';
 import gsap from 'gsap';
 
-import { resolveQuality } from './Quality.js';
+import { resolveQuality, detectGpuString } from './Quality.js';
 import { ScrollEngine } from './ScrollEngine.js';
 import { BeachPhase } from '../phases/BeachPhase.js';
 import { OceanSurface } from '../world/ocean/OceanSurface.js';
@@ -46,6 +46,7 @@ export class App {
         white-space: pre; line-height: 1.4;`;
       tag.textContent =
         `tier: ${this.quality.tier}\n` +
+        `gpu: ${detectGpuString() ?? 'unknown'}\n` +
         `cores: ${navigator.hardwareConcurrency ?? 'n/a'}\n` +
         `memory: ${navigator.deviceMemory ?? 'n/a'}\n` +
         `dpr: ${window.devicePixelRatio}\n` +
