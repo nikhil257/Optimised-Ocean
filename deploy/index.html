@@ -22,10 +22,16 @@
 
     <!--
       Production embed, exactly as documented in src/index.js: the built IIFE
-      bundle (window.OceanIntro) with data-auto-init, which calls
-      OceanIntro.init() with defaults once the script loads. This is the real
-      "one container div + one script tag" integration a host site would use.
+      bundle (window.OceanIntro). Normally this would just be
+      <script src="/ocean-intro.js" data-auto-init></script> — auto-init with
+      defaults, no overrides. TEMPORARILY switched to an explicit init() call
+      with debug:true so the on-screen quality-tier readout shows up here
+      while diagnosing the Windows performance issue. Revert to the
+      data-auto-init form once that's done.
     -->
-    <script src="/ocean-intro.js" data-auto-init></script>
+    <script src="/ocean-intro.js"></script>
+    <script>
+      window.OceanIntro.init({ debug: true });
+    </script>
   </body>
 </html>
