@@ -8,7 +8,7 @@ import {
 } from 'three';
 import gsap from 'gsap';
 
-import { resolveQuality, detectGpuString } from './Quality.js';
+import { resolveQuality } from './Quality.js';
 import { ScrollEngine } from './ScrollEngine.js';
 import { BeachPhase } from '../phases/BeachPhase.js';
 import { OceanSurface } from '../world/ocean/OceanSurface.js';
@@ -36,23 +36,6 @@ export class App {
 
     if (config.debug) {
       console.info('[OceanIntro] quality tier:', this.quality.tier, this.quality);
-      // Visible on-screen readout — so it's checkable at a glance on any
-      // machine without opening devtools. Only exists when debug:true.
-      const tag = document.createElement('div');
-      tag.style.cssText = `
-        position: fixed; top: 8px; left: 8px; z-index: 999999;
-        background: rgba(0,0,0,0.75); color: #0f0; font: 11px monospace;
-        padding: 6px 9px; border-radius: 4px; pointer-events: none;
-        white-space: pre; line-height: 1.4;`;
-      tag.textContent =
-        `tier: ${this.quality.tier}\n` +
-        `gpu: ${detectGpuString() ?? 'unknown'}\n` +
-        `cores: ${navigator.hardwareConcurrency ?? 'n/a'}\n` +
-        `memory: ${navigator.deviceMemory ?? 'n/a'}\n` +
-        `dpr: ${window.devicePixelRatio}\n` +
-        `renderScale: ${this.quality.renderScale}\n` +
-        `pixelRatioCap: ${this.quality.pixelRatioCap}`;
-      document.body.appendChild(tag);
     }
 
     this._setupRenderer();
