@@ -307,8 +307,11 @@ export class App {
     // near/far particles while the mid-distance ones stay sharp, matching
     // the reference's bokeh-vortex look. Scoped to just this sequence (see
     // disableDoF in _startRush) rather than left on for the rest of the
-    // experience — it's a real extra blur pass, not free.
-    this.post.enableDoF();
+    // experience — it's a real extra blur pass, not free. Also gated to
+    // `high` tier only: on a GPU that's already behind, an extra full-screen
+    // blur pass reads as "everything is blurry/laggy" rather than cinematic,
+    // so medium/low skip it entirely instead of getting a degraded version.
+    if (this.quality.tier === 'high') this.post.enableDoF();
 
     // The vortex already exists (built + shader-warmed back in
     // _buildUnderwater); ramp it up to full for the dive. (Safety-create it

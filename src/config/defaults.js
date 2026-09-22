@@ -16,7 +16,7 @@ export const DEFAULTS = {
   },
 
   // --- Quality ---------------------------------------------------------
-  quality: "high", // 'auto' | 'high' | 'medium' | 'low'
+  quality: "auto", // 'auto' | 'high' | 'medium' | 'low'
 
   // --- Color script (locked to the approved cold North Sea grade) ------
    palette: {
