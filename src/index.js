@@ -39,6 +39,25 @@ function lockHostScroll(lock) {
   }
 }
 
+/**
+ * Many scroll-triggered / fade-in-on-view animation systems (Webflow's own
+ * IX2 "scroll into view" triggers, GSAP ScrollTrigger, AOS, etc.) only
+ * recalculate element visibility on an actual scroll/resize EVENT, not on
+ * page load. Scroll was fully locked the whole time the intro was up, so
+ * those systems never got a chance to run their first check — elements
+ * that should already be in view when the real page is revealed can be
+ * stuck in their pre-animation state (usually opacity: 0) even though
+ * they're exactly where they should be. Nudging window with synthetic
+ * scroll/resize events gives them the trigger they were waiting for.
+ * Deferred one frame so it runs after the container is actually gone.
+ */
+function nudgeHostAnimations() {
+  requestAnimationFrame(() => {
+    window.dispatchEvent(new Event('scroll'));
+    window.dispatchEvent(new Event('resize'));
+  });
+}
+
 function init(overrides = {}) {
   if (activeInstance) {
     console.warn('[OceanIntro] already initialized');
@@ -62,6 +81,7 @@ function init(overrides = {}) {
     persistence.markCompleted();
     lockHostScroll(false);
     unmount(dom.host);
+    nudgeHostAnimations();
     activeInstance = null;
   });
 
@@ -72,6 +92,7 @@ function init(overrides = {}) {
       lockHostScroll(false);
       app.destroy();
       unmount(dom.host);
+      nudgeHostAnimations();
       activeInstance = null;
     },
   };
