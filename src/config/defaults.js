@@ -1,3 +1,12 @@
+// Every model/video/image path below is resolved against this base, not
+// against whatever page the script happens to run on. Needed because this
+// script is meant to be embedded on a DIFFERENT domain (a client's Webflow
+// site) than the one hosting these assets — without an absolute base, the
+// browser would try (and fail) to fetch e.g. "https://client-site.com/
+// logo.glb" instead of the actual file. Update this if the assets ever move
+// to a different host.
+const ASSET_BASE = "https://flowdojo-ocean.vercel.app";
+
 export const DEFAULTS = {
   // --- Embed -----------------------------------------------------------
   container: "[data-ocean-intro]", // selector or HTMLElement
@@ -79,8 +88,8 @@ export const DEFAULTS = {
   },
 
   beach: {
-    video: "/new.mp4",
-    logo: "/logo.glb",
+    video: `${ASSET_BASE}/new.mp4`,
+    logo: `${ASSET_BASE}/logo.glb`,
     logoSize: 4.5,
     fov: 42,
     cameraStart: [0, 0, 8],
@@ -271,14 +280,14 @@ export const DEFAULTS = {
     fogDensityDeep: 0.006, // near-clear once deep
     kelpCount: 420,
     kelpModels: [
-      { url: "/seaweed.glb", weight: 60, color: "#3f6f52", scale: 0.45 }, // most
-      { url: "/meshn.glb", weight: 30, scale: 0.45 }, // less
-      { url: "/mushroom.glb", weight: 2, scale: 0.14 }, // rare, small
+      { url: `${ASSET_BASE}/seaweed.glb`, weight: 60, color: "#3f6f52", scale: 0.45 }, // most
+      { url: `${ASSET_BASE}/meshn.glb`, weight: 30, scale: 0.45 }, // less
+      { url: `${ASSET_BASE}/mushroom.glb`, weight: 2, scale: 0.14 }, // rare, small
     ],
     kelpSway: 0.9, // plant sway strength (0 = stiff)
     kelpEmbed: 0.0, // base offset vs seabed (negative tucks roots into sand)
     rockCount: 189,
-    rockModels: ["/fd-rock.glb", "/rock.glb"],
+    rockModels: [`${ASSET_BASE}/fd-rock.glb`, `${ASSET_BASE}/rock.glb`],
     rockModelSize: 3, // normalized max extent — matches the old base rock's size
     fishCount: 200, // the NEAR school you swim past (full 3D, expensive)
 
@@ -320,12 +329,12 @@ export const DEFAULTS = {
       // (6) TWO models now
       {
         name: "fishA",
-        url: "/fishh.glb",
+        url: `${ASSET_BASE}/fishh.glb`,
         weight: 60,
         size: 3,
         rotation: [0, Math.PI, 0],
       },
-      { name: "fishB", url: "/fish.glb", weight: 40, size: 2.2 },
+      { name: "fishB", url: `${ASSET_BASE}/fish.glb`, weight: 40, size: 2.2 },
     ],
 
     fishClusters: 22, // (3) was 10
@@ -360,7 +369,7 @@ export const DEFAULTS = {
 
     //SHARKS
     sharkCount: 5,
-    sharkModel: "./shark.glb", // longest axis, in meters
+    sharkModel: `${ASSET_BASE}/shark.glb`,
     sharkModelSize: 14, // longest axis, in meters
     sharkModelRotation: [0, Math.PI, 0],
     sharkWagFront: 1.0, // wag starts around mid-body
@@ -442,49 +451,49 @@ export const DEFAULTS = {
         label: "We Got a Project",
         heading: "So… what are we actually building?",
         text: "We gather requirements, goals, and approximately 47 questions.",
-        image: "./first.gif",
+        image: `${ASSET_BASE}/first.gif`,
       },
       {
         side: "right",
         label: "Let’s wireframe this boy.",
         heading: "Chaos to Structure",
         text: "We map the structure, flow, and content. Boxes first.",
-        image: "./second.gif",
+        image: `${ASSET_BASE}/second.gif`,
       },
       {
         side: "left",
         label: "Pixels Get Pretty",
         heading: "Okay, now make it look expensive.",
         text: "We turn wireframes into polished, interactive designs.",
-        image: "./third.gif",
+        image: `${ASSET_BASE}/third.gif`,
       },
       {
         side: "right",
         label: "One Tiny Change",
         heading: "Can we just try one small thing?",
         text: "We review, revise, tweak, and repeat. You know the drill.",
-        image: "./fourth.gif",
+        image: `${ASSET_BASE}/fourth.gif`,
       },
       {
         side: "left",
         label: "Developer Has Entered",
         heading: "My time has come.",
         text: "Design meets code. Pixels become a real website.",
-        image: "./fifth.gif",
+        image: `${ASSET_BASE}/fifth.gif`,
       },
       {
         side: "right",
         label: "Umm.. Are We Actually Done?",
         heading: "Wait… did we check everything?",
         text: "One last check. Then another. Just to be sure.",
-        image: "./six.gif",
+        image: `${ASSET_BASE}/six.gif`,
       },
       {
         side: "left",
         label: "Everyone Ready For Launch?",
         heading: "Money Money Money",
         text: "The new website is live. Time to turn traffic into revenue.",
-        image: "./seventh.gif",
+        image: `${ASSET_BASE}/seventh.gif`,
       },
 
       //CARDS WITH IMAGE
