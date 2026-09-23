@@ -79,6 +79,11 @@ function init(overrides = {}) {
 
   if (config.once && persistence.hasCompleted()) {
     if (config.debug) console.info('[OceanIntro] already completed — skipping');
+    // Fire the same completion signal a returning visitor would otherwise
+    // never get — if the host page's own animations wait for this event
+    // (see nudgeHostAnimations), they need it here too, not just on the
+    // one visit where the intro actually played.
+    nudgeHostAnimations();
     return { skipped: true, destroy() {} };
   }
 
