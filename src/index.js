@@ -12,9 +12,29 @@ import { App } from './core/App.js';
 // init() resolves immediately if the visitor already completed the intro.
 
 let activeInstance = null;
+let savedScrollY = 0;
 
 function lockHostScroll(lock) {
-  document.documentElement.style.overflow = lock ? 'hidden' : '';
+  const htmlStyle = document.documentElement.style;
+  const bodyStyle = document.body.style;
+  if (lock) {
+    // Locking only <html> isn't reliably enough on every site — many host
+    // pages (Webflow included) put their own height/overflow rules on
+    // <body>, which can let scrolling leak through underneath the intro
+    // even with <html> locked. Lock both.
+    savedScrollY = window.scrollY;
+    htmlStyle.overflow = 'hidden';
+    bodyStyle.overflow = 'hidden';
+  } else {
+    htmlStyle.overflow = '';
+    bodyStyle.overflow = '';
+    // Safety net: if anything still leaked through during the intro
+    // despite the lock, restore exactly where the visitor actually was
+    // before it started, rather than wherever residual scroll landed
+    // (reported: page appearing scrolled down near the footer instead of
+    // at the top once the intro completes).
+    window.scrollTo(0, savedScrollY);
+  }
 }
 
 function init(overrides = {}) {
