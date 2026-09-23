@@ -40,21 +40,31 @@ function lockHostScroll(lock) {
 }
 
 /**
- * Many scroll-triggered / fade-in-on-view animation systems (Webflow's own
- * IX2 "scroll into view" triggers, GSAP ScrollTrigger, AOS, etc.) only
- * recalculate element visibility on an actual scroll/resize EVENT, not on
- * page load. Scroll was fully locked the whole time the intro was up, so
- * those systems never got a chance to run their first check — elements
- * that should already be in view when the real page is revealed can be
- * stuck in their pre-animation state (usually opacity: 0) even though
- * they're exactly where they should be. Nudging window with synthetic
- * scroll/resize events gives them the trigger they were waiting for.
- * Deferred one frame so it runs after the container is actually gone.
+ * Two things happen here, covering opposite failure modes:
+ *
+ * 1. A synthetic scroll/resize nudge, for animation systems that only
+ *    recalculate visibility on an actual event and never got one while
+ *    scroll was locked — this catches triggers that would otherwise never
+ *    fire at all.
+ *
+ * 2. A custom 'oceanintro:complete' event on window, for the OPPOSITE
+ *    problem: animation systems that fire on page load (GSAP timelines,
+ *    ScrollTrigger's automatic initial refresh, etc.) run the instant the
+ *    page loads regardless of what's visually covering it — since our
+ *    overlay doesn't affect layout, those triggers can see their elements
+ *    as already "in view" and play the WHOLE animation silently while
+ *    hidden behind the intro. There's nothing this script can do to stop
+ *    that from the outside — the host page's own animation setup needs to
+ *    listen for this event and defer/replay from there instead of running
+ *    on load. See the integration note wherever this is documented.
+ *
+ * Both deferred one frame so they run after the container is actually gone.
  */
 function nudgeHostAnimations() {
   requestAnimationFrame(() => {
     window.dispatchEvent(new Event('scroll'));
     window.dispatchEvent(new Event('resize'));
+    window.dispatchEvent(new CustomEvent('oceanintro:complete'));
   });
 }
 
