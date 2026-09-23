@@ -22,9 +22,9 @@
     </style>
   </head>
   <body>
-    <!-- The only two things a Webflow site needs: this container + the script. -->
-    <div data-ocean-intro></div>
-
+    <!-- No container div needed — mount.js creates [data-ocean-intro]
+         itself (as the first element in body) if one isn't already
+         present. Only the critical CSS above + the script are required. -->
     <main>
       <h1>Host website content</h1>
       <p>This is the page revealed after the intro completes. Add ?intro=force to the URL to replay the intro after completion.</p>

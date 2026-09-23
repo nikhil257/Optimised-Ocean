@@ -145,11 +145,37 @@ canvas {
 }
 `;
 
+/**
+ * Parses a simple `[attr]` or `[attr="value"]` CSS attribute selector and
+ * applies it to an element — enough to recreate the default container
+ * (`[data-ocean-intro]`) programmatically. Returns false if the selector
+ * isn't that simple bracket form (class/id/tag selectors aren't safely
+ * re-creatable from a string alone).
+ */
+function applyAttributeSelector(el, selector) {
+  const m = /^\[([\w-]+)(?:=["']?([^"'\]]*)["']?)?\]$/.exec(selector.trim());
+  if (!m) return false;
+  el.setAttribute(m[1], m[2] ?? '');
+  return true;
+}
+
 export function mount(config) {
-  const host =
+  let host =
     typeof config.container === 'string'
       ? document.querySelector(config.container)
       : config.container;
+
+  // No manual placement required: if the configured container isn't found
+  // (the expected case for a pure "just add this script tag" embed), create
+  // it ourselves as the first element in <body>, instead of asking the
+  // integrator to add it by hand. Only for string selectors — if the caller
+  // passed an actual element reference that turned out falsy, there's
+  // nothing sensible to auto-create.
+  if (!host && typeof config.container === 'string') {
+    host = document.createElement('div');
+    applyAttributeSelector(host, config.container);
+    document.body.insertBefore(host, document.body.firstChild);
+  }
 
   if (!host) {
     throw new Error(`[OceanIntro] container not found: ${config.container}`);
