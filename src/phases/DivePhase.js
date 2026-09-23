@@ -29,7 +29,6 @@ export class DivePhase {
   }
 
   start() {
-     console.log('DivePhase.start() called, initial look:', this.state?.look);
     const cam = this.camera;
     const d = this.config.dive;
 
@@ -71,7 +70,6 @@ export class DivePhase {
       .to(this.state, { y: -d.depth, duration: d.diveSettleDuration, ease: 'power2.out' });
 
     // Pitch: tip downward through the plunge, level back out while settling.
-    console.log('anticipation', d.anticipation, 'plunge', d.plungeDuration, 'settle', d.diveSettleDuration);
     tl.to(this.state, {
       look: 25.0,
       duration: d.anticipation,

@@ -119,9 +119,6 @@ export class App {
       reducedMotion: this.reducedMotion,
     });
 
-     console.log('ELEMENTS:', Object.keys(this).filter(k => this[k] instanceof HTMLElement));
-    console.log('CANVAS PARENT:', this.renderer?.domElement?.parentElement);
-
         this.beachPhase = new BeachPhase({
             container: this.renderer.domElement.parentElement,
       config: this.config,
