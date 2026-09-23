@@ -16,23 +16,25 @@ let savedScrollY = 0;
 
 function lockHostScroll(lock) {
   const htmlStyle = document.documentElement.style;
-  const bodyStyle = document.body.style;
   if (lock) {
-    // Locking only <html> isn't reliably enough on every site — many host
-    // pages (Webflow included) put their own height/overflow rules on
-    // <body>, which can let scrolling leak through underneath the intro
-    // even with <html> locked. Lock both.
     savedScrollY = window.scrollY;
     htmlStyle.overflow = 'hidden';
-    bodyStyle.overflow = 'hidden';
+    // NOTE: deliberately NOT also locking <body>'s overflow. That seemed
+    // like a reasonable belt-and-suspenders addition, but overflow:hidden
+    // makes an element a scrolling container even though nothing can
+    // actually scroll inside it — and that can change what a
+    // `position: sticky` sidebar (a common Webflow pattern) computes as
+    // its containing scroll context, breaking it (seen live: a sidebar
+    // collapsing to display:none once something elsewhere triggered a
+    // reflow). The scroll-restore below already guarantees the page lands
+    // in the right place regardless, since the whole page is hidden behind
+    // our fully opaque overlay the entire time anyway — html-only locking
+    // is enough, body's overflow doesn't need touching.
   } else {
     htmlStyle.overflow = '';
-    bodyStyle.overflow = '';
-    // Safety net: if anything still leaked through during the intro
-    // despite the lock, restore exactly where the visitor actually was
-    // before it started, rather than wherever residual scroll landed
-    // (reported: page appearing scrolled down near the footer instead of
-    // at the top once the intro completes).
+    // Safety net: restore exactly where the visitor actually was before
+    // the intro started, regardless of anything that happened underneath
+    // while it was hidden behind our overlay.
     window.scrollTo(0, savedScrollY);
   }
 }
