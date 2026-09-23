@@ -11,7 +11,7 @@ export const DEFAULTS = {
   // --- Embed -----------------------------------------------------------
   container: "[data-ocean-intro]", // selector or HTMLElement
   zIndex: 9999,
-  once: true, // play once per visitor
+  once: false, // TEMP for testing — set back to true before production launch. Plays every reload instead of once per visitor.
   storageKey: "oceanIntro:v1:done",
   forceParam: "intro", // ?intro=force replays the experience
   debug: false,
