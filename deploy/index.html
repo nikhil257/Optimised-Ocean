@@ -9,6 +9,28 @@
       body { margin: 0; font-family: system-ui, sans-serif; background: #101418; color: #dfe6e8; }
       main { min-height: 200vh; padding: 12vh 8vw; }
       h1 { font-weight: 500; letter-spacing: -0.02em; }
+
+      /*
+        Critical CSS — covers the viewport the INSTANT the browser parses
+        this tag, before ocean-intro.js has even downloaded, let alone run.
+        Without this, there's a real gap (script loads at the bottom of
+        body) where the host page's own content paints first and is
+        visible for a moment before the script mounts the shadow DOM +
+        loader over it. mount.js still sets the exact configured z-index
+        via JS once it runs; this is just a same-value placeholder so
+        nothing shows through in that gap. White background matches the
+        loader's own background, so the handoff between "blank cover" and
+        "loader with text" is seamless. Any real host site embedding this
+        should add the same few lines to their own <head> for the same
+        reason — it isn't Ocean-Intro-specific, it's inherent to any
+        script-mounted full-screen overlay.
+      */
+      [data-ocean-intro] {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #ffffff;
+      }
     </style>
   </head>
   <body>

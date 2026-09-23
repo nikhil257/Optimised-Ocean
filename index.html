@@ -9,6 +9,16 @@
       body { margin: 0; font-family: system-ui, sans-serif; background: #101418; color: #dfe6e8; }
       main { min-height: 200vh; padding: 12vh 8vw; }
       h1 { font-weight: 500; letter-spacing: -0.02em; }
+
+      /* Critical CSS — see deploy/index.html for the full explanation.
+         Covers the viewport before the module script has even run, so
+         there's no flash of host content while it loads/mounts. */
+      [data-ocean-intro] {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #ffffff;
+      }
     </style>
   </head>
   <body>
