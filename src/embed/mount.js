@@ -255,9 +255,17 @@ export function mount(config) {
 }
 
 export function unmount(host) {
-  host.style.removeProperty('position');
-  host.style.removeProperty('inset');
-  host.style.removeProperty('z-index');
-  // Shadow roots can't be detached; clear their contents instead.
-  host.shadowRoot?.replaceChildren();
+  // Remove the element outright, not just its inline styles. A permanent
+  // stylesheet rule (the critical CSS a host page adds for
+  // [data-ocean-intro], to prevent the flash-of-host-content this element
+  // exists to solve) still matches host after its INLINE styles are
+  // cleared — the attribute itself is never removed — so the container
+  // kept fully covering the viewport in solid white forever after
+  // "completion." Removing the element is the only way to guarantee the
+  // stylesheet rule stops applying. Safe unconditionally: this element's
+  // only purpose is being the intro's mount point (either created by
+  // mount() itself, or added by the integrator specifically for this), and
+  // a later replay (?intro=force, or once:false) re-creates/re-finds it via
+  // mount()'s existing auto-create fallback.
+  host.remove();
 }
